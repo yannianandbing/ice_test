@@ -89,7 +89,6 @@ def load_session(session_name: str) -> None:
         with open(history_path, "r", encoding="utf-8") as f:
             history_data = json.load(f)
             st.session_state.full_history = history_data.get("messages", [])
-            st.session_state.timeline = history_data.get("timeline", [])
             st.session_state.user_nick_name = history_data.get("user_nick_name", "")
             st.session_state.user_nature = history_data.get("user_nature", "")
             st.session_state.ai_nick_name = history_data.get("ai_nick_name", "C")
@@ -135,7 +134,6 @@ def delete_session(session_name: str) -> None:
     # 如果删除的是当前会话，则需要更新消息列表
     if session_name == st.session_state.current_session:
         st.session_state.messages = []
-        st.session_state.timeline = []
         st.session_state.full_history = []
         st.session_state.current_session = generate_session_name()
         st.session_state.user_nick_name = ""
@@ -197,9 +195,6 @@ def init_state() -> None:
 
     if "undo_pending" not in st.session_state:
         st.session_state.undo_pending = [] # 存储被撤销但尚未从 messages 删除的消息对
-
-    if "timeline" not in st.session_state:
-        st.session_state.timeline = [] # 时间线功能
 
 # 系统提示词
 def get_system_prompt() -> str:
@@ -317,9 +312,9 @@ def merge_to_long_term(summary_cache: list, old_long_term: dict) -> dict:
 # 新增函数：强制限制记忆长度
 def enforce_memory_limits(memory: dict) -> dict:
     """检查记忆长度，若超限则进行压缩"""
-    total_chars = sum(len(memory.get(k, "")) for k in ["user", "partner", "relationship", "timeline"])
+    total_chars = sum(len(str(memory.get(k, ""))) for k in ["user", "partner", "relationship", "timeline"])
     if total_chars <= LONG_TERM_TOTAL_MAX and all(
-            len(memory.get(k, "")) <= LONG_TERM_FIELD_MAX for k in ["user", "partner", "relationship"]) and len(memory.get("timeline", [])) <= 20:
+            len(str(memory.get(k, ""))) <= LONG_TERM_FIELD_MAX for k in ["user", "partner", "relationship"]) and len(memory.get("timeline", [])) <= 20:
         return memory
 
     # 需要压缩
@@ -331,12 +326,14 @@ def enforce_memory_limits(memory: dict) -> dict:
 用户记忆：{memory.get('user', '')}
 伴侣记忆：{memory.get('partner', '')}
 关系互动记忆：{memory.get('relationship', '')}
+时间线：{json.dumps(memory.get('timeline', []), ensure_ascii=False)}
 """
     prompt = f"""
 以下长期记忆长度过长，请在不丢失最关键信息的前提下进行压缩。
 要求：
-- 每个字段不超过{200}字。
-- 输出格式为严格的JSON对象，包含字段："user"、"partner"、"relationship"。不要输出任何额外文字。
+- 用户记忆、伴侣记忆、关系互动记忆每个字段不超过200字。
+- 时间线最多保留10条，保留最重要的时间点。
+- 输出格式为严格的JSON对象，包含字段："user"、"partner"、"relationship"、"timeline"。不要输出任何额外文字。
 
 当前长期记忆：
 {mem_text}
@@ -381,7 +378,6 @@ def handle_user_input(prompt: str) -> None:
         st.session_state.undo_pending = []
         save_session() # 保存更新后的AI上下文
 
-    user_msg = {"role": "user", "content": prompt}
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     user_msg = {"role": "user", "content": prompt, "timestamp": current_time}
     st.session_state.full_history.append(user_msg)
@@ -590,7 +586,11 @@ def main():
                 save_session()
             st.session_state.messages = []
             st.session_state.full_history = []
-            st.session_state.timeline = []
+            st.session_state.undo_pending = []
+            st.session_state.user_nick_name = ""
+            st.session_state.user_nature = ""
+            st.session_state.undo_click_count = 0
+            st.session_state.five_undo_click_count = 0
             st.session_state.current_session = generate_session_name()
             st.session_state.ai_nick_name = "C"
             st.session_state.ai_nature = "正常人"
@@ -674,9 +674,9 @@ def main():
         st.text("字没打完就发出去了怎么办？")
         if st.button("撤回按钮", use_container_width=True, icon="↩️"):
             # 边界1：完整历史和AI上下文都为空
-            if not st.session_state.full_history and not st.session_state.messages:
+            if not st.session_state.full_history:
                 show_hidden_window("all_deleted")
-            elif len(st.session_state.undo_pending) >= len(st.session_state.messages) // 2:
+            elif not st.session_state.messages or len(st.session_state.undo_pending) >= len(st.session_state.messages) // 2:
                 show_hidden_window("no_more_messages")
             else:
                 delete_user_message()
@@ -690,9 +690,10 @@ def main():
     # 展示聊天信息
     st.caption(f"会话名称：{st.session_state.current_session}")
     for message in st.session_state.full_history:  # {"role": "user", "content": prompt}
-        st.chat_message(message["role"]).text(message["content"])
-    else:
-        st.chat_message("assistant").markdown(message["content"])
+        if message["role"] == "user":
+            st.chat_message(message["role"]).text(message["content"])
+        else:
+            st.chat_message("assistant").markdown(message["content"])
         # if message["role"] == "user":
         #     st.chat_message("user").write(message["content"])
         # else:
