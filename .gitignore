@@ -1,0 +1,24 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# 会话数据（隐私）
+chat_history/
+ai_context/
+sessions/
+
+# 敏感信息
+.env
+.streamlit/secrets.toml
+
+# 日志和临时文件
+*.log
+.DS_Store
+Thumbs.db
