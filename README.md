@@ -36,3 +36,5 @@ python "D:\下载\AI伴侣\star.py"
 
 （如若有编程软件，例如vscode, pycharm等
 也可在此类编程软件中打开本文件夹进行相同操作）
+
+<img width="3072" height="1824" alt="image" src="https://github.com/user-attachments/assets/dcddb0f7-435c-4f5e-b1de-1344dedb7848" />
