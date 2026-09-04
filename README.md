@@ -1,10 +1,10 @@
 这个是一个AI智能伴侣网页的小练习
-使用的编程语言为python
+时间：2026.09
 
 请按照以下步骤进行第一次项目启动
 
 1、API的创建与充值
-此项目AI为Deepseek
+此项目AI模型为Deepseek-v4-pro
 如果想要进行对话，请前往DeepSeek官网进行API充值，链接如下
 https://platform.deepseek.com/usage
 充值后点击API keys按钮，创建API key，API名称随意
