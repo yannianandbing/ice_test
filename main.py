@@ -16,7 +16,7 @@ st.set_page_config(
     menu_items = {}
 )
 
-MODEL_NAME="deepseek-v4-pro"
+MODEL_NAME="deepseek-flash"
 
 # 新增常量（记忆管理相关）
 MAX_MESSAGES_BEFORE_SUMMARY = 140 # 消息数超过70触发摘要
